@@ -1,0 +1,171 @@
+{
+    "type": "Settings",
+    "audio": {
+        "input": {
+            "encoding": "mulaw",
+            "sample_rate": 8000
+        },
+        "output": {
+            "encoding": "mulaw",
+            "sample_rate": 8000,
+            "container": "none"
+        }
+    },
+    "agent": {
+        "language": "en",
+        "listen": {
+            "provider": {
+                "type": "deepgram",
+                "model": "nova-3",
+                "keyterms": [
+                    "reservation",
+                    "booking",
+                    "check-in",
+                    "checkout",
+                    "cancel",
+                    "cancellation",
+                    "modify",
+                    "confirmation",
+                    "Grand Horizon"
+                ]
+            }
+        },
+        "think": {
+            "provider": {
+                "type": "open_ai",
+                "model": "gpt-4o-mini",
+                "temperature": 0.7
+            },
+            "prompt": "You are a professional customer service representative for Grand Horizon Hotel & Spa. You are warm, helpful, and efficient.\n\nCRITICAL VOICE CONVERSATION RULES: This is a VOICE conversation and your responses will be read aloud by text-to-speech. You must NEVER use any markdown formatting in your responses. This means no asterisks for bold or italics, no bullet points or dashes, no headers with hashtags, and no numbered lists. Always speak naturally as you would in a phone conversation, using flowing sentences instead of lists. For example, instead of listing details with bullets, say something like: Your cancellation reference number is CXL-GH-78432, your original confirmation was GH-78432, and you were scheduled to check in on January 15th.\n\nYour capabilities include answering general hotel questions about amenities, policies, check-in and check-out times, and location using the get_hotel_info function. You can also look up existing reservations using lookup_reservation, cancel reservations using cancel_reservation, modify reservations using modify_reservation, and schedule callbacks for complex issues using request_callback.\n\nIMPORTANT GUIDELINES: You must ALWAYS collect both the confirmation number AND last name before looking up, modifying, or canceling any reservation. Never skip this verification step. Confirmation numbers follow the format GH-XXXXX, such as GH-78432, and you should help guests if they are unsure of the format. For cancellations, you must always explain the cancellation policy before processing and confirm the guest wants to proceed. For modifications, clearly explain any price differences before confirming changes. If a guest seems confused or has a complex issue, offer to schedule a callback with a human agent. Use the guest's name once you have it to personalize the conversation. Be empathetic if guests are frustrated and focus on finding solutions. For date inputs, guide guests to use the format year-month-day, such as 2025-01-15.\n\nConversation flow guidance: For general inquiries, answer directly from hotel information. For reservation lookups, first ask for the confirmation number, then ask for the last name, verify the details, and provide the information. For cancellations, get the confirmation number and last name, verify the reservation, explain the cancellation policy, confirm the guest's intent to cancel, then process the cancellation. For modifications, get the confirmation number and last name, verify the reservation, ask what they would like to change, check if the change is possible, confirm the details, then process the modification.",
+            "functions": [
+                {
+                    "name": "get_hotel_info",
+                    "description": "Get information about the hotel including amenities, policies, check-in/checkout times, location, and room types. Use this when guests ask general questions about the hotel that don't require reservation lookup.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "category": {
+                                "type": "string",
+                                "description": "The type of information requested. Options: 'amenities', 'pool', 'gym', 'spa', 'restaurant', 'bar', 'wifi', 'parking', 'check_in_time', 'check_out_time', 'early_check_in', 'late_check_out', 'cancellation_policy', 'pet_policy', 'smoking_policy', 'location', 'directions', 'contact', 'room_types'"
+                            }
+                        },
+                        "required": [
+                            "category"
+                        ]
+                    }
+                },
+                {
+                    "name": "lookup_reservation",
+                    "description": "Look up an existing reservation by confirmation number and verify with the guest's last name. ALWAYS collect BOTH the confirmation number AND last name before calling this function. The confirmation number format is GH-XXXXX.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "confirmation_number": {
+                                "type": "string",
+                                "description": "The reservation confirmation number in format GH-XXXXX (e.g., 'GH-78432'). Ask the guest to spell it out if unclear."
+                            },
+                            "last_name": {
+                                "type": "string",
+                                "description": "The guest's last name for verification. Must match the name on the reservation."
+                            }
+                        },
+                        "required": [
+                            "confirmation_number",
+                            "last_name"
+                        ]
+                    }
+                },
+                {
+                    "name": "cancel_reservation",
+                    "description": "Cancel an existing reservation. IMPORTANT: Before calling this function, you MUST: 1) Collect confirmation number and last name, 2) Explain the cancellation policy (free if 48+ hours before check-in, first night charge if within 48 hours), 3) Get explicit confirmation from the guest that they want to proceed with cancellation.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "confirmation_number": {
+                                "type": "string",
+                                "description": "The reservation confirmation number (format: GH-XXXXX)"
+                            },
+                            "last_name": {
+                                "type": "string",
+                                "description": "The guest's last name for verification"
+                            },
+                            "cancellation_reason": {
+                                "type": "string",
+                                "description": "Reason for cancellation. Options: 'change_of_plans', 'emergency', 'found_alternative', 'price_concern', 'other'. Ask the guest why they're canceling."
+                            }
+                        },
+                        "required": [
+                            "confirmation_number",
+                            "last_name",
+                            "cancellation_reason"
+                        ]
+                    }
+                },
+                {
+                    "name": "modify_reservation",
+                    "description": "Modify an existing reservation. Can change check-in date, check-out date, room type, guest count, or add special requests. Always verify the reservation first with confirmation number and last name. Explain any price differences before confirming.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "confirmation_number": {
+                                "type": "string",
+                                "description": "The reservation confirmation number (format: GH-XXXXX)"
+                            },
+                            "last_name": {
+                                "type": "string",
+                                "description": "The guest's last name for verification"
+                            },
+                            "modification_type": {
+                                "type": "string",
+                                "description": "Type of modification: 'check_in_date', 'check_out_date', 'room_type', 'guest_count', or 'add_request'"
+                            },
+                            "new_value": {
+                                "type": "string",
+                                "description": "The new value for the modification. For dates use YYYY-MM-DD format. For room_type use: 'standard', 'deluxe', 'suite', or 'penthouse'. For guest_count use a number. For add_request, describe the request."
+                            }
+                        },
+                        "required": [
+                            "confirmation_number",
+                            "last_name",
+                            "modification_type",
+                            "new_value"
+                        ]
+                    }
+                },
+                {
+                    "name": "request_callback",
+                    "description": "Schedule a callback from a human guest services agent. Use this when the guest has a complex issue that cannot be resolved through the automated system, or when they explicitly request to speak with a human.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "guest_name": {
+                                "type": "string",
+                                "description": "The guest's full name"
+                            },
+                            "phone_number": {
+                                "type": "string",
+                                "description": "Phone number where the guest can be reached for callback"
+                            },
+                            "issue_description": {
+                                "type": "string",
+                                "description": "Brief description of the issue or reason for callback"
+                            }
+                        },
+                        "required": [
+                            "guest_name",
+                            "phone_number",
+                            "issue_description"
+                        ]
+                    }
+                }
+            ]
+        },
+        "speak": {
+            "provider": {
+                "type": "deepgram",
+                "model": "aura-2-thalia-en"
+            }
+        },
+        "greeting": "Hello and thank you for calling Destin! My name is D, your virtual concierge. I can help you with hotel information, look up your existing reservation, make changes to your booking, or process a cancellation. How may I assist you today?"
+    }
+}
